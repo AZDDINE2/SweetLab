@@ -334,7 +334,50 @@ function tx(fn) {
   }
 }
 
-// Données de départ : comptes par défaut et un catalogue d'exemple que le gérant pourra modifier.
+// Catalogue SweetLab de départ : [catégorie, [[nom, prix de la part, prix du moule]…]] (prix en centimes, produits en moule).
+const SWEETLAB_CATALOGUE = [
+  ['Flan', [['Flan classic', 1500, 12000], ['Flan Nutella', 2500, 12000], ['flan chocolat', 2000, 12000], ['Flan fruit rouge', 2300, 12000]]],
+];
+
+// Ajoute les produits du catalogue SweetLab qui manquent (sans doublon : comparaison des noms sans majuscules).
+function addSweetlabCatalogue() {
+  const findCat = db.prepare('SELECT id FROM categories WHERE name = ? COLLATE NOCASE');
+  const insertCat = db.prepare('INSERT INTO categories (name, loyalty) VALUES (?, 1)');
+  const hasProduct = db.prepare('SELECT 1 FROM products WHERE name = ? COLLATE NOCASE');
+  const insertProduct = db.prepare('INSERT INTO products (name, category_id, price_cents, mold_price_cents, is_flan) VALUES (?, ?, ?, ?, 1)');
+  for (const [catName, products] of SWEETLAB_CATALOGUE) {
+    const catId = findCat.get(catName)?.id ?? Number(insertCat.run(catName).lastInsertRowid);
+    for (const [name, price, moldPrice] of products) if (!hasProduct.get(name)) insertProduct.run(name, catId, price, moldPrice);
+  }
+}
+
+// Les anciennes versions créaient un catalogue d'exemple (Quesillo…, Café, Eau). Une seule fois par base :
+// les produits d'exemple jamais vendus sont supprimés (ceux déjà vendus sont seulement désactivés, pour garder
+// l'historique des ventes), les catégories d'exemple vides aussi, puis le catalogue SweetLab est ajouté.
+const EXAMPLE_PRODUCTS = ['Quesillo classique', 'Quesillo coco', 'Quesillo café', 'Quesillo chocolat',
+  'Quesillo entier classique', 'Quesillo entier coco', 'Café', 'Eau'];
+const EXAMPLE_CATEGORIES = ['Quesillo - Part', 'Quesillo - Entier', 'Boissons'];
+function removeExampleCatalogue() {
+  const sold = db.prepare('SELECT 1 FROM order_items WHERE product_id = ? LIMIT 1');
+  const removed = [];
+  for (const name of EXAMPLE_PRODUCTS) {
+    for (const p of db.prepare('SELECT id FROM products WHERE name = ?').all(name)) {
+      if (sold.get(p.id)) {
+        db.prepare('UPDATE products SET active = 0 WHERE id = ?').run(p.id);
+      } else {
+        for (const t of ['daily_stock', 'prep_stock', 'stock_moves', 'stock_counts']) db.prepare(`DELETE FROM ${t} WHERE product_id = ?`).run(p.id);
+        db.prepare('DELETE FROM products WHERE id = ?').run(p.id);
+      }
+      removed.push(name);
+    }
+  }
+  for (const name of EXAMPLE_CATEGORIES) {
+    db.prepare('DELETE FROM categories WHERE name = ? AND NOT EXISTS (SELECT 1 FROM products WHERE category_id = categories.id)').run(name);
+  }
+  if (removed.length) console.log(`Catalogue d'exemple retiré : ${removed.join(', ')}`);
+}
+
+// Données de départ : comptes par défaut et catalogue SweetLab (modifiables ensuite par le gérant).
 function seed() {
   const { n: userCount } = db.prepare('SELECT COUNT(*) AS n FROM users').get();
   if (userCount === 0) {
@@ -345,19 +388,12 @@ function seed() {
   }
 
   const { n: catCount } = db.prepare('SELECT COUNT(*) AS n FROM categories').get();
-  if (catCount === 0) {
-    const insertCat = db.prepare('INSERT INTO categories (name, loyalty) VALUES (?, ?)');
-    const insertProduct = db.prepare('INSERT INTO products (name, category_id, price_cents, is_flan) VALUES (?, ?, ?, ?)');
-    const catalogue = [
-      ['Quesillo - Part', [['Quesillo classique', 2000], ['Quesillo coco', 2500], ['Quesillo café', 2500], ['Quesillo chocolat', 2500]]],
-      ['Quesillo - Entier', [['Quesillo entier classique', 15000], ['Quesillo entier coco', 18000]]],
-      ['Boissons', [['Café', 1000], ['Eau', 500]]],
-    ];
+  const cleaned = db.prepare("SELECT value FROM settings WHERE key = 'example_catalogue_removed'").get();
+  if (catCount === 0 || !cleaned) {
     tx(() => {
-      catalogue.forEach(([catName, products]) => {
-        const catId = Number(insertCat.run(catName, catName === 'Boissons' ? 0 : 1).lastInsertRowid);
-        for (const [name, price] of products) insertProduct.run(name, catId, price, catName === 'Boissons' ? 0 : 1);
-      });
+      if (catCount > 0) removeExampleCatalogue();
+      addSweetlabCatalogue();
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('example_catalogue_removed', '1')").run();
     });
   }
 }
