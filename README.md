@@ -34,6 +34,25 @@ Comptes créés au premier lancement (**à changer** dans l'onglet Utilisateurs)
 
 Pour utiliser la caisse depuis une tablette ou un autre PC du même réseau : `http://<adresse-IP-du-PC>:3000`.
 
+## Mise en ligne (Railway, depuis GitHub)
+
+SweetLab peut tourner en ligne, sans le PC du magasin. Railway lance le serveur à partir du dépôt GitHub et le met à jour à chaque `git push`.
+
+1. Sur [railway.com](https://railway.com) : **New Project → Deploy from GitHub repo →** choisir `SweetLab`. Le fichier `railway.json` donne la commande de démarrage ; Node 22.13+ est demandé par `package.json`.
+2. Dans le service : **+ New → Volume** (ou clic droit → *Attach volume*), point de montage **`/data`**. Railway fournit alors `RAILWAY_VOLUME_MOUNT_PATH` : la base de données, les factures et les données de lecture y sont gardées (rien n'est perdu aux redémarrages et mises à jour).
+3. **Settings → Networking → Generate Domain** : une adresse du type `https://sweetlab-production.up.railway.app`.
+4. Ouvrir l'adresse, se connecter (`gerant` / `gerant123`) et **changer tout de suite les mots de passe** des deux comptes (onglet *Équipe*).
+
+En ligne, il n'y a qu'une adresse :
+
+| Adresse | Pour qui |
+|---|---|
+| `https://…up.railway.app/` | Caisse et gérant (connexion) |
+| `https://…up.railway.app/fidelite` | Clients : carte de fidélité (adresse à mettre dans le QR code) |
+
+Sur le PC du magasin (`npm start`), rien ne change : caisse/gérant sur le port 3000, fidélité sur le port 3001.
+Le mode « une seule adresse » s'active tout seul sur Railway (ou avec la variable `SINGLE_PORT=1`).
+
 ## Fonctionnement du stock
 
 - Le stock est **par journée** : chaque matin, le gérant indique combien de pièces de chaque produit sont mises en vente (onglet *Stock du jour*).

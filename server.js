@@ -914,7 +914,7 @@ app.get('/api/qr.png', auth('gerant'), async (req, res) => {
 });
 
 app.get('/api/loyalty/settings', auth('gerant'), (req, res) => {
-  res.json({ ...publicLoyalty(), public_url: getSettings().public_url, public_port: Number(PUBLIC_PORT) });
+  res.json({ ...publicLoyalty(), public_url: getSettings().public_url, public_port: Number(PUBLIC_PORT), public_path: SINGLE_PORT ? '/fidelite' : null });
 });
 
 app.put('/api/loyalty/settings', auth('gerant'), (req, res) => {
@@ -1600,6 +1600,12 @@ app.put('/api/users/:id', auth('gerant'), (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Hébergement en ligne (Railway) : une seule adresse ----------
+// En ligne il n'y a qu'un port : les pages de fidélité des clients sont servies sous /fidelite
+// (ex. https://sweetlab.up.railway.app/fidelite). Sur le PC du magasin, elles restent sur le port 3001.
+const SINGLE_PORT = Boolean(process.env.SINGLE_PORT || process.env.RAILWAY_ENVIRONMENT);
+if (SINGLE_PORT) app.use('/fidelite', pub);
+
 // ---------- Erreurs ----------
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
@@ -1655,6 +1661,10 @@ const NOT_FOUND_PAGE = `<!doctype html><html lang="fr"><head><meta charset="utf-
 <p class="muted">Scannez le QR code affiché au comptoir pour créer ou ouvrir votre carte.</p></div>
 <div class="shop-links" data-shop-links></div></main><script src="/js/common.js"></script></body></html>`;
 
-start(loyaltyApp, PUBLIC_PORT, [
-  `SweetLab fidélité client : http://localhost:${PUBLIC_PORT}  (port à transférer en public)`,
-]);
+if (SINGLE_PORT) {
+  console.log(`SweetLab fidélité client : même adresse, sous /fidelite`);
+} else {
+  start(loyaltyApp, PUBLIC_PORT, [
+    `SweetLab fidélité client : http://localhost:${PUBLIC_PORT}  (port à transférer en public)`,
+  ]);
+}

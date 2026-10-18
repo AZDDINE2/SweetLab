@@ -844,7 +844,10 @@ let loyalty = null;
 
 // Adresse du QR code : l'adresse publique réglée, sinon le port 3001 de cette machine.
 function loyaltyBase() {
-  return loyalty.public_url || `${location.protocol}//${location.hostname}:${loyalty.public_port}`;
+  if (loyalty.public_url) return loyalty.public_url;
+  // En ligne (une seule adresse) : la fidélité est sous /fidelite.
+  if (loyalty.public_path) return `${location.origin}${loyalty.public_path}`;
+  return `${location.protocol}//${location.hostname}:${loyalty.public_port}`;
 }
 
 async function loadClients() {

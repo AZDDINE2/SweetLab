@@ -51,6 +51,8 @@
 
   <script src="/js/common.js"></script>
   <script>
+    // En ligne, la fidélité est servie sous /fidelite ; sur le port 3001, à la racine.
+    const BASE = location.pathname.startsWith('/fidelite') ? '/fidelite' : '';
     const $ = (id) => document.getElementById(id);
 
     function showEnded() {
@@ -88,7 +90,7 @@
     function end() {
       if (ended) return;
       ended = true;
-      api('/api/public/logout-card', { method: 'POST', noRedirect: true }).catch(() => {});
+      api(BASE + '/api/public/logout-card', { method: 'POST', noRedirect: true }).catch(() => {});
       showEnded();
     }
 
@@ -103,7 +105,7 @@
     async function load() {
       if (ended) return;
       try {
-        const card = await api('/api/public/my-card', { noRedirect: true });
+        const card = await api(BASE + '/api/public/my-card', { noRedirect: true });
         deadline = Date.now() + card.session_expires_in * 1000;
         render(card);
         tick();
