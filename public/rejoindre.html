@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7d2c4">
+  <meta name="robots" content="noindex">
+  <title>SweetLab - Carte de fidélité</title>
+  <link rel="icon" href="/img/flask.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/img/logo.jpg">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="client-page">
+  <main class="client">
+    <img class="client-logo" src="/img/logo.jpg" alt="SweetLab" width="128" height="128">
+
+    <!-- Espace client : nouveau client ou client déjà inscrit -->
+    <div class="card client-hero" id="joinBox">
+      <div class="client-hero-icon" data-icon="gift"></div>
+      <h1>Votre carte de fidélité</h1>
+      <p class="muted" id="ruleText">Chaque visite compte !</p>
+
+      <form id="joinForm" class="client-form">
+        <p class="muted client-small" style="margin:0">Nouveau client ou déjà inscrit : entrez votre prénom et votre numéro.</p>
+        <label>Prénom
+          <input name="name" required maxlength="40" autocomplete="given-name" placeholder="ex. Sara">
+        </label>
+        <label>Numéro de téléphone
+          <input name="phone" required inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+        </label>
+        <div class="error-msg" id="error"></div>
+        <button class="btn-primary" type="submit">Voir ma carte</button>
+        <div class="session-timer" id="timer"></div>
+      </form>
+    </div>
+
+    <!-- Temps écoulé -->
+    <div class="card client-hero hidden" id="expiredBox">
+      <h1>Temps écoulé</h1>
+      <p class="muted">Pour votre sécurité, la saisie est limitée dans le temps. Scannez à nouveau le QR code du comptoir.</p>
+    </div>
+
+    <div class="shop-links" data-shop-links></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let session = null;
+    let deadline = 0;
+    let timer = null;
+
+    function expire() {
+      clearInterval(timer);
+      $('joinBox').classList.add('hidden');
+      $('expiredBox').classList.remove('hidden');
+    }
+
+    function tick() {
+      const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      $('timer').textContent = `Temps restant : ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      $('timer').classList.toggle('urgent', left <= 30);
+      if (left === 0) expire();
+    }
+
+    // Chaque scan du QR ouvre une NOUVELLE session : on ferme d'abord l'éventuelle session précédente.
+    async function startSession() {
+      try {
+        await api('/api/public/logout-card', { method: 'POST', noRedirect: true }).catch(() => {});
+        const s = await api('/api/public/session', { method: 'POST', noRedirect: true });
+        session = s.session;
+        deadline = Date.now() + s.expires_in * 1000;
+        tick();
+        timer = setInterval(tick, 1000);
+      } catch (err) {
+        $('error').textContent = err.message;
+      }
+    }
+
+    api('/api/public/join-info', { noRedirect: true })
+      .then((info) => { $('ruleText').textContent = `Chaque visite compte : ${info.stamps_required} visites = ${info.reward_label} !`; })
+      .catch(() => {});
+    startSession();
+
+    $('joinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      $('error').textContent = '';
+      f.querySelector('button').disabled = true;
+      try {
+        await api('/api/public/join', {
+          method: 'POST', noRedirect: true,
+          body: { session, name: f.name.value, phone: f.phone.value },
+        });
+        clearInterval(timer);
+        location.replace('/carte');
+      } catch (err) {
+        if (/Temps écoulé/.test(err.message)) return expire();
+        $('error').textContent = err.message;
+        f.querySelector('button').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

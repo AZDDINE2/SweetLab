@@ -1,0 +1,25 @@
+{
+  "name": "sweetlab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SweetLab - caisse, gestion de stock et ventes (quesillo / flan vénézuélien)",
+  "main": "server.js",
+  "scripts": {
+    "prestart": "node scripts/free-ports.js",
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "qr": "node --disable-warning=ExperimentalWarning scripts/qr.js",
+    "outils": "node scripts/outils.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@fontsource/fredoka": "^5.1.0",
+    "express": "^5.1.0",
+    "pdfjs-dist": "^4.10.38",
+    "qrcode": "^1.5.4",
+    "tesseract.js": "^5.1.1"
+  }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SweetLab - Connexion</title>
+  <link rel="icon" href="/img/flask.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/img/logo.jpg">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-box card">
+      <img class="login-logo" src="/img/logo.jpg" alt="SweetLab" width="160" height="160">
+      <p class="muted" style="text-align:center;margin-top:0" id="subtitle">Caisse &amp; gestion de stock</p>
+      <form id="loginForm">
+        <label>Identifiant
+          <input name="username" autocomplete="username" required autofocus>
+        </label>
+        <label>Mot de passe
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <div class="error-msg" id="error"></div>
+        <button class="btn-primary" type="submit">Se connecter</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    // Déjà connecté : on va directement à la bonne page.
+    api('/api/me', { noRedirect: true }).then((me) => (location.href = homeFor(me))).catch(() => {});
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const errorEl = document.getElementById('error');
+      errorEl.textContent = '';
+      try {
+        const me = await api('/api/login', {
+          method: 'POST',
+          noRedirect: true,
+          body: { username: form.username.value, password: form.password.value },
+        });
+        location.href = homeFor(me);
+      } catch (err) {
+        errorEl.textContent = err.message;
+        form.password.select();
+      }
+    });
+  </script>
+</body>
+</html>

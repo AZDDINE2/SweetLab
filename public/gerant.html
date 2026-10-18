@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>SweetLab - Gérant</title>
+  <link rel="icon" href="/img/flask.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/img/logo.jpg">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img class="brand-mark" src="/img/flask.svg" alt="" width="34" height="34"><span class="brand-name" aria-label="SweetLab"><span class="c1">S</span><span class="c2">w</span><span class="c3">e</span><span class="c4">e</span><span class="c5">t</span><span class="c3">L</span><span class="c1">a</span><span class="c2">b</span></span> <span class="tag">Gérant</span></div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button data-tab="recap" data-icon="recap" class="active"><span>Récap</span></button>
+      <button data-tab="stock" data-icon="stock"><span>Stock</span></button>
+      <button data-tab="ventes" data-icon="ventes"><span>Ventes</span></button>
+      <button data-tab="fond" data-icon="cash"><span>Fond</span></button>
+      <!-- tab-extra : rangés dans le menu « Plus » sur les petits téléphones -->
+      <button data-tab="produits" data-icon="produits" class="tab-extra"><span>Produits</span></button>
+      <button data-tab="matieres" data-icon="matieres" class="tab-extra"><span>Matières</span></button>
+      <!-- Onglet Clients (fidélité) masqué pour le moment : retirer class="hidden" pour le réafficher -->
+      <button data-tab="clients" data-icon="gift" class="tab-extra hidden"><span>Clients</span></button>
+      <button data-tab="users" data-icon="users" class="tab-extra"><span>Équipe</span></button>
+      <button type="button" class="tab-more" id="tabMore" data-icon="more" aria-haspopup="menu" aria-expanded="false" aria-controls="tabMenu"><span>Plus</span></button>
+      <div class="tab-menu hidden" id="tabMenu" role="menu" aria-label="Autres sections"></div>
+    </nav>
+    <div class="spacer"></div>
+    <div class="user">
+      <!-- Alertes envoyées par la caisse (ex. emballages terminés) -->
+      <div class="notif">
+        <button class="btn-sm btn-icon notif-btn" id="notifBtn" data-icon="bell" aria-label="Alertes" title="Alertes" aria-haspopup="true" aria-expanded="false">
+          <span class="notif-count hidden" id="notifCount"></span>
+        </button>
+        <div class="notif-panel hidden" id="notifPanel" role="dialog" aria-label="Alertes"></div>
+      </div>
+      <a href="/caisse.html" class="btn btn-sm" data-icon="caisse" aria-label="Ouvrir la caisse"><span class="hide-phone">Caisse</span></a>
+      <span id="userName" class="hide-tablet"></span>
+      <button class="btn-sm btn-icon" id="logoutBtn" data-icon="logout" aria-label="Déconnexion" title="Déconnexion"></button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar" id="dateBar">
+      <div class="title" id="dateTitle"></div>
+      <input type="date" id="dateInput" aria-label="Journée">
+      <button id="todayBtn">Aujourd’hui</button>
+      <button class="btn-icon" id="refreshBtn" data-icon="refresh" aria-label="Actualiser" title="Actualiser"></button>
+    </div>
+
+    <!-- Récap -->
+    <section data-panel="recap">
+      <div class="kpis" id="kpis"></div>
+      <div class="card">
+        <h2>Chiffre d’affaires — 7 derniers jours</h2>
+        <div class="chart" id="daysChart"></div>
+        <details class="table-view"><summary>Voir le tableau</summary><div id="lastDays"></div></details>
+      </div>
+      <div class="grid-2">
+        <div class="card"><h2>Ventes par produit</h2><div id="byProduct"></div></div>
+        <div class="stack">
+          <div class="card"><h2>Par catégorie</h2><div id="byCategory"></div></div>
+          <div class="card"><h2>Par caissier</h2><div id="byCashier"></div></div>
+        </div>
+      </div>
+      <div class="card"><h2>État du stock</h2><div id="recapStock"></div></div>
+    </section>
+
+    <!-- Stock -->
+    <section data-panel="stock" class="hidden">
+      <div class="card">
+        <h2>Stock de préparation <span class="muted">(cuisine)</span></h2>
+        <p class="muted card-help">
+          On prépare des <strong>moules</strong> : <strong>1 moule = 8 parts</strong>.
+          <strong>+ Production</strong> ajoute les moules préparés.
+          <strong>Mettre en vente</strong> retire les moules d’ici et les ajoute au stock de vente (1 moule mis en vente = −1 moule en préparation).
+        </p>
+        <div id="prepTable"></div>
+      </div>
+      <div class="card">
+        <h2>Stock de vente <span class="muted">(aujourd’hui)</span></h2>
+        <p class="muted card-help">
+          Le matin, <strong>Définir</strong> fixe le stock d’ouverture (ex. 3 moules), sans toucher à la préparation.
+          Quand il s’épuise, on ajoute <strong>uniquement</strong> depuis le stock de préparation (<em>Mettre en vente</em>).
+          Il diminue avec les ventes de la caisse ; un moule mis en vente ne retourne pas en préparation.
+        </p>
+        <div id="venteTable"></div>
+      </div>
+      <div class="card" id="countCard">
+        <h2>Comptage de fin de journée</h2>
+        <p class="muted card-help">
+          À la fermeture, comptez ce qui <strong>reste vraiment</strong> dans le stock de vente (moules et parts) et les
+          <strong>emballages parts restants</strong>. L’écart avec ce qui devrait rester s’affiche tout de suite.
+        </p>
+        <div id="countTable"></div>
+        <div class="count-foot">
+          <div class="muted" id="countStatus"></div>
+          <button class="btn-primary" id="countSave">Enregistrer le comptage</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h2>Emballages du jour</h2>
+          <p class="muted card-help">Déclarez les emballages <strong>parts</strong> mis à disposition : un est donné pour chaque part à emporter. L’emballage <strong>moule</strong> part automatiquement avec chaque moule entier (facturé sauf si le client rapporte son ancien moule) : pas de stock à déclarer.</p>
+          <div class="pack-blocks" id="packBlocks"></div>
+          <form class="form-stack pack-prices" id="venteForm">
+            <h3>Prix des emballages</h3>
+            <div class="row">
+              <label>Emballage part (DH) <input name="packaging_price" inputmode="decimal" required style="width:110px"></label>
+              <label>Emballage moule (DH) <input name="mold_packaging" inputmode="decimal" required style="width:110px"></label>
+              <button class="btn-primary" type="submit">Enregistrer les prix</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Mouvements du jour</h2>
+          <div id="movesList"></div>
+        </div>
+      </div>
+
+      <!-- Correction d'un stock -->
+      <dialog class="qr-dialog" id="correctDialog">
+        <h2 id="correctTitle"></h2>
+        <p class="muted" style="margin:0 0 10px">Saisissez la quantité réelle présente en cuisine (après un comptage, une perte…).</p>
+        <div class="row" style="justify-content:center">
+          <label id="correctMoldsLabel">Moules <input id="correctMolds" type="number" min="0" step="1" inputmode="numeric" style="width:100px"></label>
+          <label><span id="correctPartsName">Parts</span> <input id="correctParts" type="number" min="0" step="1" inputmode="numeric" style="width:100px"></label>
+        </div>
+        <div class="row"><button id="correctCancel">Annuler</button><button class="btn-primary" id="correctSave">Enregistrer</button></div>
+      </dialog>
+    </section>
+
+    <!-- Ventes -->
+    <section data-panel="ventes" class="hidden">
+      <div id="ordersList"></div>
+    </section>
+
+    <!-- Fond de caisse -->
+    <section data-panel="fond" class="hidden">
+      <!-- Journée pas encore ouverte -->
+      <div class="card" id="fondOpenCard">
+        <h2>Ouvrir la journée</h2>
+        <p class="muted card-help">Saisissez l’argent présent dans la caisse en début de journée (la monnaie de départ).</p>
+        <form class="row" id="fondOpenForm">
+          <label>Fond de caisse (DH) <input name="amount" inputmode="decimal" required placeholder="500,00" style="width:160px"></label>
+          <button class="btn-primary" type="submit">Ouvrir la journée</button>
+        </form>
+      </div>
+
+      <div class="hidden" id="fondContent">
+        <div class="kpis" id="fondKpis"></div>
+        <p class="muted fond-meta" id="fondMeta"></p>
+
+        <div class="fond-close">
+          <!-- Clôture -->
+          <div class="card" id="closeCard">
+            <h2>Clôture de caisse</h2>
+            <p class="muted card-help">Comptez les billets et les pièces, ou saisissez directement le total.</p>
+            <div class="denoms" id="denoms"></div>
+            <div class="form-stack">
+              <label>Espèces comptées (DH) <input id="countedInput" inputmode="decimal" placeholder="0,00"></label>
+              <div class="fond-diff hidden" id="fondDiff"></div>
+              <label>Remarque (optionnel) <input id="closeNote" maxlength="200" placeholder="ex. billet de 20 DH abîmé"></label>
+              <button class="btn-primary btn-big" id="closeBtn">Clôturer la journée</button>
+            </div>
+          </div>
+
+          <!-- Journée clôturée -->
+          <div class="card hidden" id="closedCard">
+            <h2>Journée clôturée</h2>
+            <div id="closedInfo"></div>
+            <button class="btn-big" id="reopenBtn" style="margin-top:12px">Rouvrir la journée</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Produits -->
+    <section data-panel="produits" class="hidden">
+      <div class="card">
+        <h2>Nouveau produit</h2>
+        <form class="row" id="newProductForm">
+          <label>Nom <input name="name" required placeholder="ex. Quesillo pistache"></label>
+          <label>Catégorie <select name="category_id" required></select></label>
+          <label>Prix de la part (DH) <input name="price" inputmode="decimal" required placeholder="25,00" style="width:120px"></label>
+          <label>Prix du moule (DH) <input name="mold_price" inputmode="decimal" placeholder="optionnel" style="width:120px"></label>
+          <label class="check-label" title="Préparé en moules de 8 parts : vente à la part ou au moule entier, suppléments, emballages"><input type="checkbox" name="is_flan" checked> En moule (8 parts)</label>
+          <button class="btn-primary" type="submit">Ajouter</button>
+        </form>
+      </div>
+      <h2>Produits</h2>
+      <div class="card"><div id="productsTable"></div></div>
+
+      <div class="card">
+        <h2>Suppléments</h2>
+        <form class="row" id="newToppingForm" style="margin-bottom:12px">
+          <label>Nom <input name="name" required maxlength="40" placeholder="ex. Coulis caramel"></label>
+          <label>Prix (DH) <input name="price" inputmode="decimal" required placeholder="2,00" style="width:100px"></label>
+          <button class="btn-primary" type="submit">Ajouter</button>
+        </form>
+        <div id="toppingsTable"></div>
+      </div>
+
+      <div class="card">
+        <h2>Nouvelle catégorie</h2>
+        <form class="row" id="newCategoryForm">
+          <label>Nom <input name="name" required placeholder="ex. Gâteaux"></label>
+          <button class="btn-primary" type="submit">Ajouter</button>
+        </form>
+      </div>
+      <h2>Catégories</h2>
+      <div class="card"><div id="categoriesTable"></div></div>
+    </section>
+
+    <!-- Matières premières et factures -->
+    <section data-panel="matieres" class="hidden">
+      <div class="card">
+        <h2>Nouvelle facture</h2>
+        <p class="muted card-help">Prenez la facture en photo, ou importez une photo ou un <strong>PDF</strong> : elle est lue automatiquement, vous vérifiez les lignes, puis tout s’ajoute au stock de matières premières avec les prix.</p>
+        <div class="row">
+          <label class="btn btn-primary file-btn" data-icon="camera"><span>Prendre en photo</span><input type="file" accept="image/*" capture="environment" id="invoiceCamera" hidden></label>
+          <label class="btn file-btn" data-icon="upload"><span>Importer une photo ou un PDF</span><input type="file" accept="image/*,application/pdf,.pdf" id="invoiceFile" hidden></label>
+          <button class="btn" id="invoiceManual">Saisir sans photo</button>
+        </div>
+
+        <div class="invoice-draft hidden" id="invoiceDraft">
+          <div class="draft-photo" id="draftPhotoBox"><img id="draftPhoto" alt="Photo de la facture"></div>
+          <div class="draft-form">
+            <div class="draft-status" id="draftStatus"></div>
+            <div class="row">
+              <label style="flex:1;min-width:160px">Fournisseur <input id="draftSupplier" maxlength="80"></label>
+              <label>Date <input id="draftDate" type="date"></label>
+            </div>
+            <datalist id="rawList"></datalist>
+            <div class="draft-lines" id="draftLines"></div>
+            <button type="button" class="btn-sm" id="draftAddLine">+ Ajouter une ligne</button>
+            <div class="draft-total">
+              <span>Total de la facture (DH)</span>
+              <input id="draftTotal" inputmode="decimal" style="width:130px;text-align:right">
+            </div>
+            <div class="row">
+              <button class="btn-primary" id="draftSave">Enregistrer la facture</button>
+              <button id="draftCancel">Annuler</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Stock de matières premières</h2>
+            <button type="button" class="btn-sm btn-danger" id="rawDeleteAll">Tout supprimer</button>
+          </div>
+          <form class="row" id="newRawForm" style="margin-bottom:12px">
+            <label style="flex:1;min-width:130px">Matière <input name="name" required maxlength="60" placeholder="ex. Lait"></label>
+            <label>Unité <input name="unit" maxlength="20" placeholder="L, kg…" style="width:90px"></label>
+            <label>Quantité <input name="quantity" inputmode="decimal" placeholder="0" style="width:90px"></label>
+            <button class="btn-primary" type="submit">Ajouter</button>
+          </form>
+          <div id="rawTable"></div>
+        </div>
+        <div class="card">
+          <h2>Factures</h2>
+          <div id="invoicesList"></div>
+        </div>
+      </div>
+
+      <!-- Détail d'une facture -->
+      <dialog class="qr-dialog invoice-dialog" id="invoiceDialog">
+        <div class="opt-head"><h2 id="invTitle"></h2><button class="btn-icon btn-ghost" id="invClose" data-icon="close" aria-label="Fermer"></button></div>
+        <div id="invBody"></div>
+        <div class="row" style="justify-content:space-between">
+          <button class="btn-danger" id="invDelete">Supprimer la facture</button>
+          <button class="btn-primary" id="invOk">Fermer</button>
+        </div>
+      </dialog>
+    </section>
+
+    <!-- Clients fidélité : toute la gestion de la fidélité -->
+    <section data-panel="clients" class="hidden">
+      <div class="kpis" id="clientsKpis"></div>
+      <div class="toolbar">
+        <h2 style="margin:0;margin-right:auto">Clients de la fidélité</h2>
+        <input type="search" id="clientSearch" placeholder="Rechercher (nom ou téléphone)" aria-label="Rechercher un client">
+      </div>
+      <div class="card"><div id="clientsTable"></div></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>QR code du comptoir</h2>
+          <p class="muted card-help">Les clients le scannent pour voir leur carte et faire compter leur visite.</p>
+          <div class="poster" id="poster">
+            <div class="poster-brand">SweetLab</div>
+            <div class="poster-title">Carte de fidélité</div>
+            <img id="joinQr" alt="QR code de la fidélité">
+            <div class="poster-text" id="posterText"></div>
+            <div class="poster-sub">Scannez avec l’appareil photo de votre téléphone</div>
+            <div class="poster-sub poster-insta" id="posterInsta"></div>
+          </div>
+          <div class="poster-link muted" id="posterLink"></div>
+          <div class="hint-warn hidden" id="urlWarn">
+            Ce QR code pointe vers « localhost » : les téléphones des clients ne pourront pas l’ouvrir.
+            Transférez le port 3001 en public dans VS Code, puis collez son adresse dans les réglages.
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-primary" id="printPoster">Imprimer l’affiche</button>
+            <a class="btn" id="downloadQr" download="qr-fidelite-sweetlab.png">Télécharger le QR code</a>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Réglages de la fidélité</h2>
+          <form class="form-stack" id="loyaltyForm">
+            <label>Nombre de visites pour une récompense
+              <input name="stamps_required" type="number" min="1" max="50" required>
+            </label>
+            <label>Récompense
+              <input name="reward_label" required maxlength="60" placeholder="1 quesillo offert">
+            </label>
+            <label>Adresse publique du port 3001 (lien du QR code)
+              <input name="public_url" placeholder="https://xxxx-3001.euw.devtunnels.ms" inputmode="url" autocapitalize="none">
+            </label>
+            <button class="btn-primary" type="submit">Enregistrer</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Utilisateurs -->
+    <section data-panel="users" class="hidden">
+      <div class="card">
+        <h2>Nouvel utilisateur</h2>
+        <form class="row" id="newUserForm">
+          <label>Identifiant <input name="username" required placeholder="caisse2" autocapitalize="none"></label>
+          <label>Nom affiché <input name="name" required placeholder="Caisse 2"></label>
+          <label>Rôle
+            <select name="role"><option value="caisse">Caisse</option><option value="gerant">Gérant</option></select>
+          </label>
+          <label>Mot de passe <input name="password" type="password" required minlength="6" autocomplete="new-password"></label>
+          <button class="btn-primary" type="submit">Créer</button>
+        </form>
+      </div>
+      <h2>Utilisateurs</h2>
+      <div class="card"><div id="usersTable"></div></div>
+
+      <!-- Ticket de caisse : informations imprimées et format du papier -->
+      <div class="card">
+        <h2>Ticket de caisse</h2>
+        <div class="ticket-settings">
+          <form class="form-stack" id="ticketForm">
+            <label>Téléphone <input name="phone" maxlength="30" inputmode="tel" placeholder="0660380767"></label>
+            <label><span>Adresse <span class="muted">(facultatif)</span></span> <input name="address" maxlength="120" placeholder="ex. Rue …, Casablanca"></label>
+            <label>Instagram <input name="instagram" maxlength="60" placeholder="@sweetlab_212"></label>
+            <label>Message en bas du ticket <input name="footer" maxlength="120" placeholder="Merci de votre visite !"></label>
+            <label>Largeur du papier
+              <select name="width"><option value="80">80 mm (imprimante à tickets standard)</option><option value="58">58 mm (petite imprimante)</option></select>
+            </label>
+            <label class="check-label"><input type="checkbox" name="print_default"> « Imprimer le ticket » coché par défaut à la caisse</label>
+            <div class="row">
+              <button class="btn-primary" type="submit">Enregistrer</button>
+              <button type="button" id="ticketTest" data-icon="printer"><span>Imprimer un exemple</span></button>
+            </div>
+          </form>
+          <div>
+            <div class="muted" style="font-size:13px;margin-bottom:6px">Aperçu</div>
+            <div class="ticket-preview"><div class="ticket" id="ticketPreview"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/ticket.js"></script>
+  <script src="/js/gerant.js"></script>
+</body>
+</html>

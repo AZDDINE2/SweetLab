@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>SweetLab - Caisse</title>
+  <link rel="icon" href="/img/flask.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/img/logo.jpg">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="pos-page">
+  <header class="topbar">
+    <div class="brand"><img class="brand-mark" src="/img/flask.svg" alt="" width="34" height="34"><span class="brand-name" aria-label="SweetLab"><span class="c1">S</span><span class="c2">w</span><span class="c3">e</span><span class="c4">e</span><span class="c5">t</span><span class="c3">L</span><span class="c1">a</span><span class="c2">b</span></span> <span class="tag">Caisse</span></div>
+    <span class="muted hide-tablet" id="today"></span>
+    <div class="spacer"></div>
+    <div class="user">
+      <button type="button" id="mySales" class="badge badge-muted sales-btn" title="Mes ventes du jour : réimprimer un ticket"></button>
+      <!-- Emballages des parts épuisés : la caisse prévient le gérant (sans bloquer les ventes) -->
+      <button class="btn-sm pack-alert" id="packAlertBtn" data-icon="bag" title="Prévenir le gérant : emballages des parts terminés" aria-label="Prévenir le gérant : emballages terminés"><span class="hide-phone">Emballages terminés</span></button>
+      <button class="btn-sm btn-icon" id="soundBtn" aria-label="Couper le son" title="Couper le son"></button>
+      <a href="/gerant.html" class="btn btn-sm hidden" id="gerantLink" data-icon="recap" aria-label="Espace gérant"><span class="hide-phone">Gérant</span></a>
+      <span id="userName" class="hide-tablet"></span>
+      <button class="btn-sm btn-icon" id="logoutBtn" data-icon="logout" aria-label="Déconnexion" title="Déconnexion"></button>
+    </div>
+  </header>
+
+  <div class="pos">
+    <section class="pos-products">
+      <div class="pos-cats" id="cats"></div>
+      <div class="pos-grid" id="grid"></div>
+    </section>
+
+    <aside class="pos-cart" id="cart" aria-label="Commande en cours">
+      <div class="cart-head">
+        <h2>Commande</h2>
+        <button class="btn-sm btn-ghost" id="clearBtn">Vider</button>
+        <button class="btn-sm btn-icon cart-close" id="closeCartBtn" data-icon="close" aria-label="Fermer"></button>
+      </div>
+      <div class="cart-lines" id="cartLines"></div>
+      <div class="cart-foot">
+        <div class="cart-count" id="cartCount">Aucun article</div>
+        <button class="btn-primary btn-validate" id="validateBtn" disabled>Continuer</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Encaissement : 1) sur place / à emporter  2) montant à encaisser -->
+  <dialog class="opt-dialog checkout-dialog" id="checkoutDialog" aria-labelledby="checkoutTitle">
+    <div class="opt-head">
+      <h2 id="checkoutTitle"></h2>
+      <button type="button" class="btn-icon btn-ghost" id="checkoutClose" data-icon="close" aria-label="Fermer"></button>
+    </div>
+
+    <div id="stepPay">
+      <div class="pay-lines" id="payLines"></div>
+      <label class="pay-note"><span>Note <span class="muted">(facultatif)</span></span>
+        <textarea id="payNote" rows="2" maxlength="200" placeholder="ex. sans sauce, au nom de Sara, à récupérer à 18h"></textarea>
+      </label>
+      <div class="pay-total"><span>Montant à encaisser</span><strong id="payTotal"></strong></div>
+      <label class="check-label pay-print"><input type="checkbox" id="payPrint"> <span data-icon="printer"></span> Imprimer le ticket</label>
+      <div class="row pay-actions">
+        <button type="button" id="payBack">Retour</button>
+        <button type="button" class="btn-primary btn-big" id="payValidate">Valider la commande</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Mes ventes du jour : réimprimer un ticket -->
+  <dialog class="opt-dialog sales-dialog" id="salesDialog" aria-labelledby="salesTitle">
+    <div class="opt-head">
+      <h2 id="salesTitle">Mes ventes du jour</h2>
+      <button type="button" class="btn-icon btn-ghost" id="salesClose" data-icon="close" aria-label="Fermer"></button>
+    </div>
+    <div id="salesList"></div>
+  </dialog>
+
+  <!-- Choix pour un produit en moule : part ou moule, suppléments, quantité -->
+  <dialog class="opt-dialog" id="optDialog" aria-labelledby="optName">
+    <div class="opt-head">
+      <h2 id="optName"></h2>
+      <button type="button" class="btn-icon btn-ghost" id="optClose" data-icon="close" aria-label="Fermer"></button>
+    </div>
+    <div class="opt-section" id="optFormatSec">
+      <div class="opt-label">Format</div>
+      <div class="seg seg-big" id="optFormat"></div>
+    </div>
+    <div class="opt-section" id="optPlaceSec">
+      <div class="opt-label">Sur place ou à emporter ?</div>
+      <div class="mode-choice mode-choice-sm" id="optPlace">
+        <button type="button" data-place="sur_place" data-icon="store"><span>Sur place</span></button>
+        <button type="button" data-place="emporter" data-icon="bag"><span>À emporter</span></button>
+      </div>
+    </div>
+    <div class="opt-section hidden" id="optMoldNote">
+      <p class="muted" style="margin:0">Un moule entier est toujours <strong>à emporter</strong> (emballage moule, sauf si le client rapporte son ancien moule).</p>
+    </div>
+    <div class="opt-section" id="optToppingsSec">
+      <div class="opt-label">Suppléments</div>
+      <div class="chips" id="optToppings"></div>
+    </div>
+    <div class="opt-section opt-qty">
+      <div class="opt-label">Quantité</div>
+      <div class="qty qty-big">
+        <button type="button" id="optMinus" aria-label="Un de moins">−</button>
+        <span id="optQty">1</span>
+        <button type="button" id="optPlus" aria-label="Un de plus">+</button>
+      </div>
+    </div>
+    <button type="button" class="btn-primary btn-big" id="optAdd">Ajouter</button>
+  </dialog>
+
+  <!-- Téléphone uniquement : barre du panier et fond du volet -->
+  <div class="sheet-backdrop" id="backdrop"></div>
+  <button class="btn-primary cart-bar" id="cartBar" disabled>
+    <span class="count" id="cartBarCount">0</span>
+    <span class="label">Voir la commande</span>
+  </button>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/ticket.js"></script>
+  <script src="/js/caisse.js"></script>
+</body>
+</html>

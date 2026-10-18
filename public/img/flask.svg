@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SweetLab">
+  <!-- Fiole du logo SweetLab : vapeur, contour brun, liquide jaune et bulles -->
+  <path d="M29.5 9.5c-2-1.6-2-3.4 0-5" fill="none" stroke="#d4633a" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M34.5 9.5c2-1.6 2-3.4 0-5" fill="none" stroke="#e68da0" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M18 46.5c4.5-3.2 9.2-4.6 14-4.6s9.5 1.4 14 4.6l2.4 4.7c1 2.2-.4 4-2.6 4H18.2c-2.2 0-3.6-1.8-2.6-4z" fill="#efaa2e"/>
+  <circle cx="26" cy="49.5" r="2.6" fill="#e68da0"/>
+  <circle cx="37.5" cy="50.5" r="2.3" fill="#3f9c8c"/>
+  <circle cx="32" cy="45.2" r="1.8" fill="#fffaf5"/>
+  <path d="M26.5 14.5v11.8L14.6 49.6c-2.1 4.2.6 8.4 5 8.4h24.8c4.4 0 7.1-4.2 5-8.4L37.5 26.3V14.5" fill="none" stroke="#45281d" stroke-width="4.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22.5 12.5h19" fill="none" stroke="#45281d" stroke-width="5.2" stroke-linecap="round"/>
+</svg>

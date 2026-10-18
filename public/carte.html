@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7d2c4">
+  <meta name="robots" content="noindex">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SweetLab">
+  <title>Ma carte SweetLab</title>
+  <link rel="icon" href="/img/flask.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/img/logo.jpg">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="client-page">
+  <main class="client">
+    <img class="client-logo" src="/img/logo.jpg" alt="SweetLab" width="128" height="128">
+
+    <div id="content" class="hidden">
+      <div class="loyalty-card">
+        <div class="lc-head">
+          <span>Carte de fidélité</span>
+          <strong id="name"></strong>
+        </div>
+        <div class="stamps" id="stamps"></div>
+        <div class="lc-count"><strong id="count"></strong></div>
+        <div class="lc-msg" id="msg"></div>
+        <div class="lc-visits" id="visits"></div>
+      </div>
+
+      <div class="visit-ok hidden" id="visitOk">✓ Votre visite d’aujourd’hui est comptée. Merci et à bientôt !</div>
+
+      <div class="reward-banner hidden" id="reward">
+        <span data-icon="gift"></span>
+        <div><strong id="rewardTitle"></strong><div>Montrez cette carte à la caisse pour en profiter.</div></div>
+      </div>
+
+      <div class="shop-links" data-shop-links></div>
+      <button class="btn-big" id="quitBtn" style="margin-top:4px">Quitter</button>
+      <div class="session-timer" id="timer" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Pas de session (temps écoulé ou déconnecté) -->
+    <div class="card client-hero hidden" id="notFound">
+      <h1>Session terminée</h1>
+      <p class="muted">Pour revoir votre carte, scannez le QR code du comptoir et entrez votre prénom et votre numéro.</p>
+    </div>
+    <div class="shop-links hidden" id="notFoundLinks" data-shop-links></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function showEnded() {
+      $('content').classList.add('hidden');
+      $('notFound').classList.remove('hidden');
+      $('notFoundLinks').classList.remove('hidden');
+    }
+
+    function render(card) {
+      const req = card.stamps_required;
+      const rewards = Math.floor(card.stamps / req);
+      // Une fois la récompense gagnée, la carte reste pleine jusqu'à ce qu'elle soit utilisée.
+      const filled = rewards > 0 ? req : card.stamps;
+      $('name').textContent = card.name;
+      $('stamps').innerHTML = Array.from({ length: req }, (_, i) =>
+        i < filled
+          ? `<span class="stamp full" aria-label="Visite ${i + 1} comptée">${icon('flan')}</span>`
+          : `<span class="stamp" aria-label="Visite ${i + 1}">${i + 1}</span>`).join('');
+      $('count').textContent = `${card.stamps} / ${req} visites`;
+      const left = req - (card.stamps % req);
+      $('msg').textContent = rewards > 0
+        ? (card.stamps % req ? `Et déjà ${card.stamps % req} visite(s) pour la prochaine !` : 'Bravo, votre carte est complète !')
+        : `Encore ${left} visite${left > 1 ? 's' : ''} avant : ${card.reward_label}`;
+      $('visits').textContent = `${card.visits} visite${card.visits > 1 ? 's' : ''} au total chez SweetLab`;
+      $('visitOk').classList.toggle('hidden', !card.visited_today);
+      $('reward').classList.toggle('hidden', rewards === 0);
+      $('rewardTitle').textContent = rewards > 1 ? `${rewards} récompenses disponibles : ${card.reward_label}` : `Récompense disponible : ${card.reward_label} !`;
+      $('content').classList.remove('hidden');
+    }
+
+    // La carte n'est visible que pendant la session (2 minutes) ouverte par la saisie du prénom + numéro.
+    let deadline = 0;
+    let ended = false;
+
+    function end() {
+      if (ended) return;
+      ended = true;
+      api('/api/public/logout-card', { method: 'POST', noRedirect: true }).catch(() => {});
+      showEnded();
+    }
+
+    function tick() {
+      if (!deadline || ended) return;
+      const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      $('timer').textContent = `Fin de la session dans ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      $('timer').classList.toggle('urgent', left <= 30);
+      if (left === 0) end();
+    }
+
+    async function load() {
+      if (ended) return;
+      try {
+        const card = await api('/api/public/my-card', { noRedirect: true });
+        deadline = Date.now() + card.session_expires_in * 1000;
+        render(card);
+        tick();
+      } catch (err) {
+        if (/Session/i.test(err.message)) end();
+      }
+    }
+
+    $('quitBtn').addEventListener('click', end);
+
+    load();
+    setInterval(tick, 1000);
+    setInterval(() => !document.hidden && load(), 15000);
+    document.addEventListener('visibilitychange', () => !document.hidden && load());
+  </script>
+</body>
+</html>
